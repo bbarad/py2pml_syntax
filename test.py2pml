@@ -1,0 +1,98 @@
+import sys
+import os
+
+targets = []
+targets.append("100K_1sug")
+targets.append("180K_ALS")
+targets.append("240K_ALS")
+targets.append("277K_SSRL")
+targets.append("288K_ALS")
+
+for target in targets:
+  
+  #temp = target[0:3]
+  # Go from "B=10" to "B=100" for T=100 to T=288
+  #pseudo_b = 10 + (100-10)*(float(temp)/288)
+
+  color = "gray"
+  if target.startswith("100K"): color = "blue"
+  if target.startswith("180K"): color = "skyblue"
+  if target.startswith("240K"): color = "green"
+  if target.startswith("277K"): color = "orange"
+  if target.startswith("288K"): color = "red"
+  
+  cmd = """
+reinit
+cmd.set('max_threads', 1)
+/Users/tuatara/fraserlab/ptp1b/multitemp/lots_of_glycerol
+load %s_2loops_altA.pdb
+load %s_2loops_altB.pdb
+fetch 1sug, async=0
+align       %s_2loops_altA, 1sug
+matrix_copy %s_2loops_altA, %s_2loops_altB
+util.ss
+#alter *_2loops_alt*, b=[RETRACTED] # for spectrum-coloring different temp models
+#spectrum b
+color %s
+util.cnc
+bg_col white
+as cartoon
+set cartoon_side_chain_helper, on
+show sticks, i. 182 or i. 179 or i. 180 or i. 185
+create 1sug_gol, 1sug and resn gol
+as sticks, 1sug_gol
+util.cbap 1sug_gol
+label %s_2loops_altA and i. 182 and name cd2, "%%.2f" %% q
+set label_position, (1.2,1.2,0)
+set label_size, 22
+set cartoon_rect_length, 0.7
+set cartoon_oval_length, 0.7
+set stick_radius, 0.15
+select act_site_hoh, \
+    ((/%s_2loops_altA//A/PHE`182/CG  around 5) and resn hoh) or \
+    ((/%s_2loops_altA//A/GLN`262/OE1 around 5) and resn hoh) or \
+    ((/%s_2loops_altB//A/PHE`182/CG  around 5) and resn hoh) or \
+    ((/%s_2loops_altB//A/GLN`262/OE1 around 5) and resn hoh)
+as spheres, act_site_hoh
+set sphere_scale, 0.15
+#select map_atoms, (i. 182) or (act_site_hoh) or (resn gol)
+select map_atoms, (i. 182 or i. 179 or i. 180 or i. 185) or (act_site_hoh) or (resn gol)
+disable map_atoms
+load %s_2loops_2mFo-DFc_map.ccp4
+load %s_2loops_mFo-DFc_map.ccp4
+matrix_copy %s_2loops_altA, %s_2loops_2mFo-DFc_map
+matrix_copy %s_2loops_altA, %s_2loops_mFo-DFc_map
+isomesh %s_2loops_2mFo-DFc_low,  %s_2loops_2mFo-DFc_map, 1.0, map_atoms, carve=3.0
+isomesh %s_2loops_2mFo-DFc_high, %s_2loops_2mFo-DFc_map, 3.0, map_atoms, carve=3.0
+isomesh %s_2loops_mFo-DFc_p,     %s_2loops_mFo-DFc_map,  3.0, map_atoms, carve=3.0
+isomesh %s_2loops_mFo-DFc_m,     %s_2loops_mFo-DFc_map, -3.0, map_atoms, carve=3.0
+color cyan,    %s_2loops_2mFo-DFc_low
+color density, %s_2loops_2mFo-DFc_high
+color green,   %s_2loops_mFo-DFc_p
+color red,     %s_2loops_mFo-DFc_m
+set mesh_width, 1
+delete 1sug
+util.ss
+sele
+set_view (\
+     0.692008436,    0.062190611,   -0.719204068,\
+    -0.587227762,    0.627949834,   -0.510726750,\
+     0.419859856,    0.775764763,    0.471068829,\
+    -0.000152860,   -0.000027334,  -50.849151611,\
+    38.658527374,   21.101474762,   15.482309341,\
+    41.648490906,   60.044963837,  -20.000000000 )
+set_view (\
+     0.514265180,   -0.084549211,   -0.853451967,\
+    -0.602859437,    0.672146916,   -0.429856271,\
+     0.609989464,    0.735572636,    0.294693708,\
+    -0.000163982,   -0.000082862,  -58.097259521,\
+    44.082237244,   23.717905045,   12.862606049,\
+    47.394184113,   67.152709961,  -20.000000000 )
+draw 1024,768
+png viz_2loops_%s.png, width=1024, height=768
+cmd.sync(timeout=30)
+#quit
+""" % tuple([target]*5 + [color] + [target]*24)
+  print cmd
+
+#print "quit"
